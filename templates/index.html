@@ -55,6 +55,25 @@
                 <p>Total New: {{ amc_counts.total_new }}</p>
                 <p>Total: {{ amc_counts.total }}</p>
                 <p>SUM Notional: {{ amc_counts.sum_notional }}</p>
+                <hr>
+                <p>Upcoming Expiration Date: {{ amc_counts.upcoming_expiration_date }}</p>
+                <p>SUM Notional (Upcoming Expiration): {{ amc_counts.sum_notional_upcoming_expiration }}</p>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Expiration Date</th>
+                            <th>SUM Notional</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for data in amc_counts.expiration_data %}
+                        <tr>
+                            <td>{{ data.date }}</td>
+                            <td>{{ data.sum_notional }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
             <div class="col">
                 <h3>GME</h3>
@@ -62,6 +81,25 @@
                 <p>Total New: {{ gme_counts.total_new }}</p>
                 <p>Total: {{ gme_counts.total }}</p>
                 <p>SUM Notional: {{ gme_counts.sum_notional }}</p>
+                <hr>
+                <p>Upcoming Expiration Date: {{ gme_counts.upcoming_expiration_date }}</p>
+                <p>SUM Notional (Upcoming Expiration): {{ gme_counts.sum_notional_upcoming_expiration }}</p>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Expiration Date</th>
+                            <th>SUM Notional</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for data in gme_counts.expiration_data %}
+                        <tr>
+                            <td>{{ data.date }}</td>
+                            <td>{{ data.sum_notional }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
             <div class="col">
                 <h3>XRT</h3>
@@ -69,6 +107,25 @@
                 <p>Total New: {{ xrt_counts.total_new }}</p>
                 <p>Total: {{ xrt_counts.total }}</p>
                 <p>SUM Notional: {{ xrt_counts.sum_notional }}</p>
+                <hr>
+                <p>Upcoming Expiration Date: {{ xrt_counts.upcoming_expiration_date }}</p>
+                <p>SUM Notional (Upcoming Expiration): {{ xrt_counts.sum_notional_upcoming_expiration }}</p>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Expiration Date</th>
+                            <th>SUM Notional</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for data in xrt_counts.expiration_data %}
+                        <tr>
+                            <td>{{ data.date }}</td>
+                            <td>{{ data.sum_notional }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
