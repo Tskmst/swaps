@@ -1,7 +1,8 @@
 from flask import Flask, render_template, g
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import func
+from sqlalchemy import func, cast, Float
+import re
 
 app = Flask(__name__)
 
@@ -54,11 +55,26 @@ def get_session(bind_key):
     Session = sessionmaker(bind=engine)
     return Session()
 
+def sanitize_and_convert(value):
+    if value:
+        # Remove all non-numeric characters except the decimal point
+        value = re.sub(r'[^0-9.]', '', value)
+        return float(value) if value else 0.0
+    return 0.0
+
+def format_currency(value):
+    return "${:,.0f}".format(value)
+
 @app.route('/')
 def index():
     amc_counts = get_dissemination_counts('amc_data')
     gme_counts = get_dissemination_counts('gme_data')
     xrt_counts = get_dissemination_counts('xrt_data')
+
+    # Format the sum_notional value as currency
+    amc_counts['sum_notional'] = format_currency(amc_counts['sum_notional'])
+    gme_counts['sum_notional'] = format_currency(gme_counts['sum_notional'])
+    xrt_counts['sum_notional'] = format_currency(xrt_counts['sum_notional'])
 
     return render_template('index.html', amc_counts=amc_counts, gme_counts=gme_counts, xrt_counts=xrt_counts)
 
@@ -81,8 +97,24 @@ def get_dissemination_counts(bind_key):
 
     total = total_unique + total_new
 
+    sum_notional_unique_new = sum(sanitize_and_convert(row.total_notional_quantity_leg_1) for row in session.query(SecCumulativeEquitiesNew).all())
+    sum_notional_unique_old = sum(sanitize_and_convert(row.total_notional_quantity_leg_1) for row in session.query(SecCumulativeEquitiesOld).all())
+    sum_notional_unique = sum_notional_unique_new + sum_notional_unique_old
+
+    sum_notional_new_new = sum(sanitize_and_convert(row.total_notional_quantity_leg_1) for row in session.query(SecCumulativeEquitiesNew).filter(
+        (SecCumulativeEquitiesNew.original_dissemination_identifier == None) |
+        (SecCumulativeEquitiesNew.original_dissemination_identifier == '')
+    ).all())
+    sum_notional_new_old = sum(sanitize_and_convert(row.total_notional_quantity_leg_1) for row in session.query(SecCumulativeEquitiesOld).filter(
+        (SecCumulativeEquitiesOld.original_dissemination_identifier == None) |
+        (SecCumulativeEquitiesOld.original_dissemination_identifier == '')
+    ).all())
+    sum_notional_new = sum_notional_new_new + sum_notional_new_old
+
+    sum_notional_total = sum_notional_unique + sum_notional_new
+
     session.close()
-    return {'total_unique': total_unique, 'total_new': total_new, 'total': total}
+    return {'total_unique': total_unique, 'total_new': total_new, 'total': total, 'sum_notional': sum_notional_total}
 
 @app.route('/<stock>')
 def show_stock(stock):
