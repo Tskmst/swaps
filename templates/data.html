@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ stock }} Data from PostgreSQL</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.21/css/dataTables.bootstrap4.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
+            <a class="navbar-brand" href="#">Swaps-O-Tracker</a>
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" href="/">Home</a>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Stocks
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                        <a class="dropdown-item" href="/amc">AMC</a>
+                        <a class="dropdown-item" href="/gme">GME</a>
+                        <a class="dropdown-item" href="/xrt">XRT</a>
+                    </div>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">Options</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">FTD</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">SSR</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">Trading Volume</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">About</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    <div class="container">
+        <div class="header text-center">
+            <h1>{{ stock }} Data from PostgreSQL</h1>
+            <p>Displaying data from the sec_cumulative_equities_new and sec_cumulative_equities_old tables</p>
+        </div>
+        <div class="table-responsive">
+            <h3>New Schema Table</h3>
+            <table id="dataTableNew" class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>Dissemination Identifier</th>
+                        <th>Original Dissemination Identifier</th>
+                        <th>Action Type</th>
+                        <th>Event Timestamp</th>
+                        <th>Notional Amount Leg 1</th>
+                        <th>Notional Amount Leg 2</th>
+                        <th>Total Notional Quantity Leg 1</th>
+                        <th>Total Notional Quantity Leg 2</th>
+                        <th>Floating Rate Payment Frequency Period Leg 2</th>
+                        <th>Price</th>
+                        <th>Effective Date</th>
+                        <th>Expiration Date</th>
+                        <th>Underlier ID Leg 1</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in data_new %}
+                    <tr>
+                        <td>{{ row.dissemination_identifier }}</td>
+                        <td>{{ row.original_dissemination_identifier }}</td>
+                        <td>{{ row.action_type }}</td>
+                        <td>{{ row.event_timestamp }}</td>
+                        <td>{{ row.notional_amount_leg_1 }}</td>
+                        <td>{{ row.notional_amount_leg_2 }}</td>
+                        <td>{{ row.total_notional_quantity_leg_1 }}</td>
+                        <td>{{ row.total_notional_quantity_leg_2 }}</td>
+                        <td>{{ row.floating_rate_payment_frequency_period_leg_2 }}</td>
+                        <td>{{ row.price }}</td>
+                        <td>{{ row.effective_date }}</td>
+                        <td>{{ row.expiration_date }}</td>
+                        <td>{{ row.underlier_id_leg_1 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="table-responsive">
+            <h3>Old Schema Table</h3>
+            <table id="dataTableOld" class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>Dissemination Identifier</th>
+                        <th>Original Dissemination Identifier</th>
+                        <th>Action Type</th>
+                        <th>Event Timestamp</th>
+                        <th>Notional Amount Leg 1</th>
+                        <th>Notional Amount Leg 2</th>
+                        <th>Total Notional Quantity Leg 1</th>
+                        <th>Total Notional Quantity Leg 2</th>
+                        <th>Floating Rate Payment Frequency Period Leg 2</th>
+                        <th>Price</th>
+                        <th>Effective Date</th>
+                        <th>Expiration Date</th>
+                        <th>Underlier ID Leg 1</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in data_old %}
+                    <tr>
+                        <td>{{ row.dissemination_identifier }}</td>
+                        <td>{{ row.original_dissemination_identifier }}</td>
+                        <td>{{ row.action_type }}</td>
+                        <td>{{ row.event_timestamp }}</td>
+                        <td>{{ row.notional_amount_leg_1 }}</td>
+                        <td>{{ row.notional_amount_leg_2 }}</td>
+                        <td>{{ row.total_notional_quantity_leg_1 }}</td>
+                        <td>{{ row.total_notional_quantity_leg_2 }}</td>
+                        <td>{{ row.floating_rate_payment_frequency_period_leg_2 }}</td>
+                        <td>{{ row.price }}</td>
+                        <td>{{ row.effective_date }}</td>
+                        <td>{{ row.expiration_date }}</td>
+                        <td>{{ row.underlier_id_leg_1 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.21/js/dataTables.bootstrap4.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#dataTableNew').DataTable();
+            $('#dataTableOld').DataTable();
+        });
+    </script>
+</body>
+</html>
