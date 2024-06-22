@@ -95,71 +95,65 @@ def index():
 
 def get_dissemination_counts(bind_key):
     session = get_session(bind_key)
+    today = datetime.today().date()
 
-    unique_original_new = session.query(SecCumulativeEquitiesNew.original_dissemination_identifier).distinct().count()
-    unique_original_old = session.query(SecCumulativeEquitiesOld.original_dissemination_identifier).distinct().count()
+    # Filtering by expiration date greater than today
+    valid_new_entries = session.query(SecCumulativeEquitiesNew).filter(
+        SecCumulativeEquitiesNew.expiration_date.isnot(None)
+    ).all()
+    valid_old_entries = session.query(SecCumulativeEquitiesOld).filter(
+        SecCumulativeEquitiesOld.expiration_date.isnot(None)
+    ).all()
+
+    # Convert to date objects and filter
+    valid_new_entries = [entry for entry in valid_new_entries if
+                         convert_to_date(entry.expiration_date) and convert_to_date(entry.expiration_date) > today]
+    valid_old_entries = [entry for entry in valid_old_entries if
+                         convert_to_date(entry.expiration_date) and convert_to_date(entry.expiration_date) > today]
+
+    unique_original_new = len(set(entry.original_dissemination_identifier for entry in valid_new_entries))
+    unique_original_old = len(set(entry.original_dissemination_identifier for entry in valid_old_entries))
     total_unique = unique_original_new + unique_original_old
 
-    blank_or_null_new = session.query(SecCumulativeEquitiesNew).filter(
-        (SecCumulativeEquitiesNew.original_dissemination_identifier == None) |
-        (SecCumulativeEquitiesNew.original_dissemination_identifier == '')
-    ).count()
-    blank_or_null_old = session.query(SecCumulativeEquitiesOld).filter(
-        (SecCumulativeEquitiesOld.original_dissemination_identifier == None) |
-        (SecCumulativeEquitiesOld.original_dissemination_identifier == '')
-    ).count()
+    blank_or_null_new = sum(
+        1 for entry in valid_new_entries
+        if entry.original_dissemination_identifier is None or entry.original_dissemination_identifier == ''
+    )
+    blank_or_null_old = sum(
+        1 for entry in valid_old_entries
+        if entry.original_dissemination_identifier is None or entry.original_dissemination_identifier == ''
+    )
     total_new = blank_or_null_new + blank_or_null_old
 
     total = total_unique + total_new
 
-    sum_notional_unique_new = sum(sanitize_and_convert(row.total_notional_quantity_leg_1) for row in
-                                  session.query(SecCumulativeEquitiesNew).all())
-    sum_notional_unique_old = sum(sanitize_and_convert(row.total_notional_quantity_leg_1) for row in
-                                  session.query(SecCumulativeEquitiesOld).all())
-    sum_notional_unique = sum_notional_unique_new + sum_notional_unique_old
+    sum_notional_unique = sum(
+        sanitize_and_convert(entry.total_notional_quantity_leg_1) for entry in valid_new_entries) + \
+                          sum(sanitize_and_convert(entry.total_notional_quantity_leg_1) for entry in valid_old_entries)
 
-    sum_notional_new_new = sum(sanitize_and_convert(row.total_notional_quantity_leg_1) for row in
-                               session.query(SecCumulativeEquitiesNew).filter(
-                                   (SecCumulativeEquitiesNew.original_dissemination_identifier == None) |
-                                   (SecCumulativeEquitiesNew.original_dissemination_identifier == '')
-                               ).all())
-    sum_notional_new_old = sum(sanitize_and_convert(row.total_notional_quantity_leg_1) for row in
-                               session.query(SecCumulativeEquitiesOld).filter(
-                                   (SecCumulativeEquitiesOld.original_dissemination_identifier == None) |
-                                   (SecCumulativeEquitiesOld.original_dissemination_identifier == '')
-                               ).all())
-    sum_notional_new = sum_notional_new_new + sum_notional_new_old
+    sum_notional_new = sum(
+        sanitize_and_convert(entry.total_notional_quantity_leg_1) for entry in valid_new_entries
+        if entry.original_dissemination_identifier is None or entry.original_dissemination_identifier == ''
+    ) + sum(
+        sanitize_and_convert(entry.total_notional_quantity_leg_1) for entry in valid_old_entries
+        if entry.original_dissemination_identifier is None or entry.original_dissemination_identifier == ''
+    )
 
     sum_notional_total = sum_notional_unique + sum_notional_new
 
-    today = datetime.today().date()
-
-    expiration_dates_new = [
-        convert_to_date(row.expiration_date)
-        for row in session.query(SecCumulativeEquitiesNew.expiration_date).filter(
-            SecCumulativeEquitiesNew.expiration_date != None).all()
-    ]
-    expiration_dates_old = [
-        convert_to_date(row.expiration_date)
-        for row in session.query(SecCumulativeEquitiesOld.expiration_date).filter(
-            SecCumulativeEquitiesOld.expiration_date != None).all()
-    ]
-
-    all_expiration_dates = sorted(set(filter(lambda x: x and x > today, expiration_dates_new + expiration_dates_old)))
+    all_expiration_dates = sorted(set(
+        convert_to_date(entry.expiration_date) for entry in valid_new_entries + valid_old_entries
+    ))
 
     upcoming_expiration_date = all_expiration_dates[0] if all_expiration_dates else None
 
     if upcoming_expiration_date:
         sum_notional_upcoming_expiration = sum(
-            sanitize_and_convert(row.total_notional_quantity_leg_1) for row in
-            session.query(SecCumulativeEquitiesNew).filter(
-                SecCumulativeEquitiesNew.expiration_date == upcoming_expiration_date.strftime('%Y-%m-%d')
-            ).all()
+            sanitize_and_convert(entry.total_notional_quantity_leg_1) for entry in valid_new_entries
+            if convert_to_date(entry.expiration_date) == upcoming_expiration_date
         ) + sum(
-            sanitize_and_convert(row.total_notional_quantity_leg_1) for row in
-            session.query(SecCumulativeEquitiesOld).filter(
-                SecCumulativeEquitiesOld.expiration_date == upcoming_expiration_date.strftime('%Y-%m-%d')
-            ).all()
+            sanitize_and_convert(entry.total_notional_quantity_leg_1) for entry in valid_old_entries
+            if convert_to_date(entry.expiration_date) == upcoming_expiration_date
         )
         sum_notional_upcoming_expiration = format_currency(sum_notional_upcoming_expiration)
     else:
@@ -169,15 +163,11 @@ def get_dissemination_counts(bind_key):
     expiration_data = []
     for date in all_expiration_dates[:10]:
         sum_notional_date = sum(
-            sanitize_and_convert(row.total_notional_quantity_leg_1) for row in
-            session.query(SecCumulativeEquitiesNew).filter(
-                SecCumulativeEquitiesNew.expiration_date == date.strftime('%Y-%m-%d')
-            ).all()
+            sanitize_and_convert(entry.total_notional_quantity_leg_1) for entry in valid_new_entries
+            if convert_to_date(entry.expiration_date) == date
         ) + sum(
-            sanitize_and_convert(row.total_notional_quantity_leg_1) for row in
-            session.query(SecCumulativeEquitiesOld).filter(
-                SecCumulativeEquitiesOld.expiration_date == date.strftime('%Y-%m-%d')
-            ).all()
+            sanitize_and_convert(entry.total_notional_quantity_leg_1) for entry in valid_old_entries
+            if convert_to_date(entry.expiration_date) == date
         )
         expiration_data.append({
             'date': date.strftime('%Y-%m-%d'),
