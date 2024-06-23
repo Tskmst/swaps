@@ -1,9 +1,10 @@
-from flask import Flask, render_template, g
+from flask import Flask, render_template, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import func, cast, Float
+from sqlalchemy import func
 import re
 from datetime import datetime
+import pandas as pd
 
 app = Flask(__name__)
 
@@ -62,7 +63,6 @@ def get_session(bind_key):
 
 def sanitize_and_convert(value):
     if value:
-        # Remove all non-numeric characters except the decimal point
         value = re.sub(r'[^0-9.]', '', value)
         return float(value) if value else 0.0
     return 0.0
@@ -85,7 +85,6 @@ def index():
     gme_counts = get_dissemination_counts('gme_data')
     xrt_counts = get_dissemination_counts('xrt_data')
 
-    # Format the sum_notional value as currency
     amc_counts['sum_notional'] = format_currency(amc_counts['sum_notional'])
     gme_counts['sum_notional'] = format_currency(gme_counts['sum_notional'])
     xrt_counts['sum_notional'] = format_currency(xrt_counts['sum_notional'])
@@ -97,7 +96,6 @@ def get_dissemination_counts(bind_key):
     session = get_session(bind_key)
     today = datetime.today().date()
 
-    # Filtering by expiration date greater than today
     valid_new_entries = session.query(SecCumulativeEquitiesNew).filter(
         SecCumulativeEquitiesNew.expiration_date.isnot(None)
     ).all()
@@ -105,7 +103,6 @@ def get_dissemination_counts(bind_key):
         SecCumulativeEquitiesOld.expiration_date.isnot(None)
     ).all()
 
-    # Convert to date objects and filter
     valid_new_entries = [entry for entry in valid_new_entries if
                          convert_to_date(entry.expiration_date) and convert_to_date(entry.expiration_date) > today]
     valid_old_entries = [entry for entry in valid_old_entries if
@@ -174,6 +171,23 @@ def get_dissemination_counts(bind_key):
             'sum_notional': format_currency(sum_notional_date)
         })
 
+    # Calculate new swaps added today
+    new_swaps_today = sum(
+        1 for entry in valid_new_entries
+        if convert_to_date(entry.effective_date) == today
+    ) + sum(
+        1 for entry in valid_old_entries
+        if convert_to_date(entry.effective_date) == today
+    )
+
+    sum_notional_new_swaps_today = sum(
+        sanitize_and_convert(entry.total_notional_quantity_leg_1) for entry in valid_new_entries
+        if convert_to_date(entry.effective_date) == today
+    ) + sum(
+        sanitize_and_convert(entry.total_notional_quantity_leg_1) for entry in valid_old_entries
+        if convert_to_date(entry.effective_date) == today
+    )
+
     session.close()
     return {
         'total_unique': total_unique,
@@ -183,8 +197,14 @@ def get_dissemination_counts(bind_key):
         'upcoming_expiration_date': upcoming_expiration_date.strftime(
             '%Y-%m-%d') if upcoming_expiration_date else "N/A",
         'sum_notional_upcoming_expiration': sum_notional_upcoming_expiration,
-        'expiration_data': expiration_data
+        'expiration_data': expiration_data,
+        'new_swaps_today': new_swaps_today,
+        'sum_notional_new_swaps_today': format_currency(sum_notional_new_swaps_today)
     }
+
+
+def model_to_dict(obj):
+    return {c.key: getattr(obj, c.key) for c in db.inspect(obj).mapper.column_attrs}
 
 
 @app.route('/<stock>')
@@ -197,7 +217,28 @@ def show_stock(stock):
     data_new = session.query(SecCumulativeEquitiesNew).all()
     data_old = session.query(SecCumulativeEquitiesOld).all()
     session.close()
-    return render_template('data.html', data_new=data_new, data_old=data_old, stock=stock.upper())
+
+    data_new_dict = [model_to_dict(entry) for entry in data_new]
+    data_old_dict = [model_to_dict(entry) for entry in data_old]
+
+    return render_template('data.html', data_new=data_new_dict, data_old=data_old_dict, stock=stock.upper())
+
+
+@app.route('/swaps/<stock>')
+def swaps(stock):
+    if stock not in ['amc', 'gme', 'xrt']:
+        return "Stock not found", 404
+
+    bind_key = f'{stock}_data'
+    session = get_session(bind_key)
+    data_new = session.query(SecCumulativeEquitiesNew).all()
+    data_old = session.query(SecCumulativeEquitiesOld).all()
+    session.close()
+
+    data_new_dict = [model_to_dict(entry) for entry in data_new]
+    data_old_dict = [model_to_dict(entry) for entry in data_old]
+
+    return render_template('swaps.html', data_new=data_new_dict, data_old=data_old_dict, stock=stock.upper())
 
 
 if __name__ == '__main__':
